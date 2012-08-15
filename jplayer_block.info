@@ -1,0 +1,6 @@
+name = jPlayer Block
+description = Creates blocks using the jPlayer plug-in for viewing video and and audio using html 5 with a Flash fallback for older browsers.
+core = 6.x
+package = "Extension"
+version = "6.x-1.0"
+project = "jplayer_block"

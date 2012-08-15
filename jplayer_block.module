@@ -1,0 +1,362 @@
+<?php
+
+/**
+ * @file
+ * This creates a block that outputs video using the jPlayer plugin
+  * TODO: Fix validation, skin option not saving
+ */
+
+
+/**
+ * Implementation of hook_help()
+  * Provide online user help.
+  *
+  * @param $path
+  * @param $arg
+  * @return
+  *   Help text
+  */
+function jplayer_block_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#jplayer_block':
+      $output = 'Creates blocks using the jPlayer plug-in for viewing video and and audio using html 5 with a Flash fallback for older browsers.';
+      return '<div>'. check_plain($output) .'</div>';
+      break;
+    case 'admin/settings/jplayer_block':
+      $output = 'TODO: add config page, perhaps';
+      return '<div>'. check_plain($output) .'</div>';
+      break;
+  }
+}
+ 
+ /**
+  * Implementation of hook_perm().
+  */
+ function jplayer_block_perm() {
+   $jplayer_video_block_permissions[] = 'administer jPlayer video block configuration settings';
+   $jplayer_video_block_permissions[] = 'access jPlayer video block';
+   return $jplayer_video_block_permissions;
+ }
+
+/**
+  * Implementation of hook_init().
+  */
+/*function jplayer_block_init() {
+  drupal_add_css(drupal_get_path('module', 'jplayer_block') .'/skin/blue.monday/jplayer.blue.monday.css');
+  drupal_add_js(drupal_get_path('module', 'jplayer_block') .'/js/jquery.jplayer.min.js');
+}*/
+
+
+/**
+ * Implementation of hook_block().
+ *
+ * @param string $op one of "list", "view", "save" and "configure"
+ */
+function jplayer_block_block($op = 'list', $delta = '', $edit = array()) {
+  // The $op parameter determines what piece of information is being requested.
+  switch ($op) {
+    case 'list':
+      $blocks['jplayer-video-block'] = array(
+        'info'       => t('jPlayer video block'),
+      );
+      return $blocks;
+    case 'configure':
+      $form = array();
+      if ($delta == 'jplayer-video-block') {
+        // All we need to provide is a text field, Drupal will take care of
+        // the other block configuration options and the save button.
+        $form['jplayer_video_block_m4v_url'] = array(
+          '#type' => 'textfield',
+          '#title' => t('URL/path of M4V (.m4v) file'),
+          '#size' => 60,
+          '#description' => t('Enter a full URL or an absolute path to video file, i.e. /sites/default/files/video/my-video.m4v'),
+          '#default_value' => variable_get('jplayer_video_block_m4v_url',  t('')),
+          '#required' => TRUE,
+        );
+        $form['jplayer_video_block_ogv_url'] = array(
+          '#type' => 'textfield',
+          '#title' => t('URL/path of OGV (.ogv) file'),
+          '#size' => 60,
+          '#description' => t('Enter a full URL or an absolute path to video file, i.e. /sites/default/files/video/my-video.ogv'),
+          '#default_value' => variable_get('jplayer_video_block_ogv_url',  t('')),
+          '#required' => FALSE,
+        );
+        $form['jplayer_video_block_webm_url'] = array(
+          '#type' => 'textfield',
+          '#title' => t('URL/path of WEBMV (.webm) file'),
+          '#size' => 60,
+          '#description' => t('Enter a full URL or an absolute path to video file, i.e. /sites/default/files/video/my-video.webm'),
+          '#default_value' => variable_get('jplayer_video_block_webm_url',  t('')),
+          '#required' => FALSE,
+        );
+        $form['jplayer_video_block_poster'] = array(
+          '#type' => 'textfield',
+          '#title' => t('URL/path of poster file'),
+          '#size' => 60,
+          '#description' => t('Enter a full URL or an absolute path to poster file , i.e. /sites/default/files/video/poster.png. This needs to be the same width/height of the video.'),
+          '#default_value' => variable_get('jplayer_video_block_poster',  t('')),
+          '#required' => TRUE,
+        );
+        $form['jplayer_video_block_width'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Video width'),
+          '#size' => 3,
+          '#description' => t('Enter the pixel width of the video, i.e. 568'),
+          '#default_value' => variable_get('jplayer_video_block_width',  t('')),
+          '#required' => TRUE,
+          '#element_validation' => array('_jplayer_block_validate'),
+        );
+        $form['jplayer_video_block_height'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Video height'),
+          '#size' => 3,
+          '#description' => t('Enter the pixel height of the video, i.e. 244'),
+          '#default_value' => variable_get('jplayer_video_block_height',  t('')),
+          '#required' => TRUE,
+        );
+      }
+      $form['jplayer_video_block_skin'] = array(
+         '#type' => 'select',
+         '#title' => t('Select Skin'),
+         '#description' => t('Select a skin for the video.'),
+         '#options' => array(
+           'eesc_minimal' => t('eesc.minimal'),
+           'blue_monday' => t('blue.monday'),
+         ),
+         '#default_value' => variable_get('jplayer_video_block_skin', 'eesc.minimal'),
+       );
+       $form['jplayer_video_block_link'] = array(
+         '#type' => 'textfield',
+         '#title' => t('Destination URL'),
+         '#size' => 60,
+         '#description' => t('Enter a URL that the video will link to'),
+         '#default_value' => variable_get('jplayer_video_block_link',  t('')),
+         '#required' => FALSE,
+       );
+      return $form;
+    case 'save':
+      // If $op is "save", we need to save settings from the configuration form.
+      // Since the first block is the only one that allows configuration, we
+      // need to check $delta to make sure we only save it.
+      
+      if ($delta == 'jplayer-video-block') {
+        // Have Drupal save the values to the database.
+        variable_set('jplayer_video_block_m4v_url', $edit['jplayer_video_block_m4v_url']);
+        variable_set('jplayer_video_block_ogv_url', $edit['jplayer_video_block_ogv_url']);
+        variable_set('jplayer_video_block_webm_url', $edit['jplayer_video_block_webm_url']);
+        variable_set('jplayer_video_block_poster', $edit['jplayer_video_block_poster']);
+        variable_set('jplayer_video_block_width', $edit['jplayer_video_block_width']);
+        variable_set('jplayer_video_block_height', $edit['jplayer_video_block_height']);
+        variable_set('jplayer_video_block_skin',  $edit['jplayer_video_block_skin']);
+       
+        variable_set('jplayer_video_block_link', $edit['jplayer_video_block_link']);
+      }
+      return;
+    case 'view':
+      // If $op is "view", then we need to generate the block for display
+      // purposes. The $delta parameter tells us which block is being requested.
+      switch ($delta) {
+        case 'jplayer-video-block':
+          // The subject is displayed at the top of the block. Note that it
+          // should be passed through t() for translation.
+          $block['subject'] = t('');
+          // The content of the block is typically generated by calling a custom
+          // function.
+          $settings = array(
+            'm4v_url' => variable_get('jplayer_video_block_m4v_url', null),
+            'ogv_url' => variable_get('jplayer_video_block_ogv_url', null),
+            'webm_url' => variable_get('jplayer_video_block_webm_url', null),
+            'poster' => variable_get('jplayer_video_block_poster', null),
+            'width' => variable_get('jplayer_video_block_width', null),
+            'height' => variable_get('jplayer_video_block_height', null),
+            'skin' => variable_get('jplayer_video_block_skin', null),
+            'link' => variable_get('jplayer_video_block_link', null)
+          );
+          
+          $block['content'] = jplayer_block_view($delta, $settings);
+          //$block['content'] = $settings['m4v_url'];
+        
+        }
+      return $block;
+    }
+  }
+
+  function jplayer_block_view($delta, $settings) {
+    
+    $id = rand(9, 100); // random id for jplayer
+    $swfpath = $base_path . drupal_get_path('module', 'jplayer_block') . '/js';
+     
+    $output = '';
+    
+    ob_start();
+    
+    $skin = str_replace('_', '.', $settings['skin']); // replace _ with .
+    
+    drupal_add_css($base_path . drupal_get_path('module', 'jplayer_block') . '/skin/' . $skin . '/jplayer.' . $skin . '.css');
+
+
+    $supplied = '';
+
+    if (!empty($settings['webm_url'])) { 
+      $supplied .= 'webmv, ';
+    }
+    
+    if (!empty($settings['ogv_url'])) { 
+      $supplied .= 'ogv, ';
+    }
+    
+    $supplied .= 'mv4';
+     
+   ?>
+      <script type="text/javascript">
+      //<![CDATA[
+      nuJQ(document).ready(function(){
+
+      	nuJQ("#jquery_jplayer_1").jPlayer({
+      		ready: function () {
+      			nuJQ(this).jPlayer("setMedia", {
+      				m4v: "<?php print $settings['m4v_url']; ?>",
+      				ogv: "<?php print $settings['ogv_url']; ?>",
+      				webmv: "<?php print $settings['webm_url']; ?>",
+      				poster: "<?php print $settings['poster']; ?>"
+      			});
+      		},
+      		swfPath: "<?php print $swfpath; ?>/Jplayer.swf",
+      		solution: "flash, html",
+      		noConflict: "nuJQ",
+      		supplied: "<?php print $supplied; ?>",
+      		size: {
+      			width: "<?php print $settings['width']; ?>px",
+      			height: "<?php print $settings['height']; ?>px",
+      			cssClass: "jp-video-<?php print $settings['width']; ?>p"
+      		}
+      	});
+
+      });
+      //]]>
+      </script>
+      
+      <div id="jp_container_1" class="jp-video jp-video-<?php print $settings['width']; ?>p">
+  			<div class="jp-type-single">
+  				<div id="jquery_jplayer_1" class="jp-jplayer"></div>
+  				<div class="jp-gui">
+  					<div class="jp-video-play">
+  						<a href="javascript:;" class="jp-video-play-icon" tabindex="1">play</a>
+  					</div>
+  					<div class="jp-interface">
+  						<div class="jp-progress">
+  							<div class="jp-seek-bar">
+  								<div class="jp-play-bar"></div>
+  							</div>
+  						</div>
+  						<div class="jp-current-time"></div>
+  						<div class="jp-duration"></div>
+  						<div class="jp-controls-holder">
+  							<ul class="jp-controls">
+  								<li><a href="javascript:;" class="jp-play" tabindex="1">play</a></li>
+  								<li><a href="javascript:;" class="jp-pause" tabindex="1">pause</a></li>
+  								<li><a href="javascript:;" class="jp-stop" tabindex="1">stop</a></li>
+  								<li><a href="javascript:;" class="jp-mute" tabindex="1" title="mute">mute</a></li>
+  								<li><a href="javascript:;" class="jp-unmute" tabindex="1" title="unmute">unmute</a></li>
+  								<li><a href="javascript:;" class="jp-volume-max" tabindex="1" title="max volume">max volume</a></li>
+  							</ul>
+  							<div class="jp-volume-bar">
+  								<div class="jp-volume-bar-value"></div>
+  							</div>
+  							
+  						</div>
+  						
+  					</div>
+  				</div>
+  				<div class="jp-no-solution">
+  					<span>Update Required</span>
+  					To play the media you will need to either update your browser to a recent version or update your <a href="http://get.adobe.com/flashplayer/" target="_blank">Flash plugin</a>.
+  				</div>
+  			</div>
+  		</div>
+    
+    <?php
+
+          $output = ob_get_contents();
+
+          ob_end_clean();
+
+
+        return $output;
+  }
+  
+  
+/**
+ * A block content function.
+ */
+/*function jplayer_video_block_contents($which_block) {
+  switch ($which_block) {
+    case 1:
+      // Modules would typically perform some database queries to fetch the
+      // content for their blocks. Here, we'll just use the variable set in the
+      // block configuration or, if none has set, a default value.
+      return variable_get('jplayer_video_block_string',  t('A default value.'));
+
+    case 2:
+      // It is possible that your block will not have any content, since it is
+      // probably dynamically constructed. In this case, Drupal will not display
+      // the block at all.
+      return;
+  }
+}*/
+
+
+/*function _jplayer_block_validate($form, &$form_state) {
+  $value = $form_state['values']['jplayer_block_jplayer_video_block_width'];
+  if (!is_numeric($value)) {
+    form_error($element, t('Video width must be a number.'));
+  }
+}
+  */
+ 
+
+/**
+ * Implementation of hook_validate().
+ * TODO: Fix validation, add link validation
+ */
+function jplayer_block_jplayer_video_block_validate($form, &$form_state) {
+  if (!is_numeric($form_state['values']['jplayer_video_block_width'])) {
+    form_set_error('jplayer_video_block_width', t('Video width must be a number.'));
+  }
+  if (!is_numeric($form_state['values']['jplayer_video_block_height'])) {
+    form_set_error('jplayer_video_block_height', t('Video height must be a number.'));
+  }
+  if (!valid_url($form_state['values']['jplayer_video_block_link'])) {
+    form_set_error('jplayer_video_block_link', t('Please enter a valid URL.'));
+  }
+} 
+
+
+function jplayercues_theme_registry_alter(&$theme_registry) 
+{
+  if (isset($theme_registry['page'])) 
+  {
+    if ($key = array_search('jquery_update_preprocess_page', $theme_registry['page']['preprocess functions'])) 
+    {
+      unset($theme_registry['page']['preprocess functions'][$key]);
+    }
+    $theme_registry['page']['preprocess functions'][] = 'jplayercues_preprocess_page';
+  } 
+}
+
+
+function jplayercues_preprocess_page(&$variables) {
+  if ((arg(0) != 'admin' && arg(0) != 'panels' && arg(0) != 'ctools') && !(arg(1) == 'add' && arg(2) == 'edit')) {
+    $scripts = drupal_add_js();
+    $module_path = substr(dirname(__FILE__), strpos(dirname(__FILE__), 'sites'), strlen(dirname(__FILE__)));
+    $new_jquery = array($module_path . '/js/jquery.1.6.min.js' => $scripts['core']['misc/jquery.js']);
+    $scripts['core'] = array_merge($new_jquery, $scripts['core']);
+    unset($scripts['core']['misc/jquery.js']);
+    $variables['scripts'] = drupal_get_js('header', $scripts);
+  }
+}
+ 
+
+
+
+
