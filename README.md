@@ -9,8 +9,8 @@ Requirements
 
 Add this code to the page.tpl.php file BEFORE "print $scripts"
 
-<code>
-<?php if (module_exists('jplayer_block')): // load newer version of jquery and set noConfict for jplayer ?>
+<pre><code>
+`<?php if (module_exists('jplayer_block')): // load newer version of jquery and set noConfict for jplayer ?>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>
   
   <script type="text/javascript">
@@ -21,5 +21,5 @@ Add this code to the page.tpl.php file BEFORE "print $scripts"
 
   <script type="text/javascript" src="<?php print $jplayer_path; ?>"></script>
  
-<?php endif; ?>
-</code>
+<?php endif; ?>`
+</code></pre>
